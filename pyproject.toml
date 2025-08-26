@@ -7,10 +7,17 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
-    "krpc (>=0.5.4,<0.6.0)"
+    "krpc (>=0.5.4,<0.6.0)",
+    "crewai (>=0.165.1,<0.166.0)",
+    "openai (==1.99.0)",
+    "anthropic (>=0.64.0,<0.65.0)"
 ]
+
+
+[tool.poetry]
+package-mode = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
