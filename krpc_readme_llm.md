@@ -212,6 +212,13 @@ docking.speed_limit = 1.0  # m/s approach speed
 
 # Maneuver Planner
 maneuver_planner = mj.maneuver_planner
+
+# IMPORTANT: Enums are accessed from mj object, not from subsystems
+# Examples of common MechJeb enums:
+#   mj.TimeReference.apoapsis, mj.TimeReference.periapsis, mj.TimeReference.computed
+#   mj.SmartASSAutopilotMode.prograde, mj.SmartASSAutopilotMode.retrograde
+#   mj.AscentPathType.classic
+
 # Plan Hohmann transfer
 hohmann = maneuver_planner.operation_hohmann
 hohmann.make_nodes(target_body=conn.space_center.bodies['Mun'])
@@ -318,6 +325,9 @@ warp.warp_to_soi_change()
 print("\n3. MUN ORBIT INSERTION")
 # Plan circularization at Mun periapsis
 circularize = maneuver.operation_circularize
+# Set time reference to periapsis for efficient circularization
+# IMPORTANT: TimeReference is accessed from mj, NOT from maneuver_planner
+circularize.time_selector.time_reference = mj.TimeReference.periapsis
 circularize.make_nodes()
 
 node_exec.enabled = True

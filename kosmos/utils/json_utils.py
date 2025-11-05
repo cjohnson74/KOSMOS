@@ -156,11 +156,27 @@ def fix_and_parse_json(
         raise json.JSONDecodeError("Empty or None JSON string", "", 0)
     
     # First, try to extract JSON from markdown code blocks
-    # Use greedy match to capture the entire JSON object, not just the first part
-    json_pattern = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
-    match = json_pattern.search(json_str)
-    if match:
-        json_str = match.group(1)
+    # Handle both JSON objects {...} and arrays [...], with various language tags
+    json_patterns = [
+        # JSON objects in code blocks (with various language tags or no tag) - use greedy matching
+        re.compile(r"```(?:json|python|py)?\s*(\{.*\})\s*```", re.DOTALL),
+        # JSON arrays in code blocks (with various language tags or no tag) - use greedy matching  
+        re.compile(r"```(?:json|python|py)?\s*(\[.*\])\s*```", re.DOTALL),
+        # Try without any language tag specification - greedy matching
+        re.compile(r"```\s*(\{.*\})\s*```", re.DOTALL),
+        re.compile(r"```\s*(\[.*\])\s*```", re.DOTALL),
+        # Fallback: non-greedy matching for edge cases
+        re.compile(r"```(?:json|python|py)?\s*(\{.*?\})\s*```", re.DOTALL),
+        re.compile(r"```(?:json|python|py)?\s*(\[.*?\])\s*```", re.DOTALL),
+    ]
+    
+    for pattern in json_patterns:
+        match = pattern.search(json_str)
+        if match:
+            extracted = match.group(1)
+            print(f"DEBUG: Extracted JSON from code block: {extracted[:200]}...")
+            json_str = extracted
+            break
     
     # Clean up whitespace and normalize
     json_str = json_str.strip()
@@ -215,52 +231,75 @@ def fix_and_parse_json(
         except json.JSONDecodeError:
             pass
     
-    # Manual extraction: find the first { and find matching } by counting braces
-    # This handles cases where there's text before/after the JSON object
-    try:
-        # Find first opening brace
-        brace_start = json_str.index("{")
-        # Count braces to find the matching closing brace
-        brace_count = 0
-        brace_end = -1
-        in_string = False
-        escape_next = False
-        
-        for i in range(brace_start, len(json_str)):
-            char = json_str[i]
+    # Manual extraction: find JSON objects {...} or arrays [...]
+    # This handles cases where there's text before/after the JSON
+    def extract_json_structure(json_str, start_char, end_char):
+        try:
+            # Find first opening character
+            start_pos = json_str.index(start_char)
+            # Count characters to find the matching closing character
+            char_count = 0
+            end_pos = -1
+            in_string = False
+            escape_next = False
             
-            # Handle string content (don't count braces inside strings)
-            if escape_next:
-                escape_next = False
-                continue
-            if char == '\\':
-                escape_next = True
-                continue
-            if char == '"':
-                in_string = not in_string
-                continue
+            for i in range(start_pos, len(json_str)):
+                char = json_str[i]
+                
+                # Handle string content (don't count brackets/braces inside strings)
+                if escape_next:
+                    escape_next = False
+                    continue
+                if char == '\\':
+                    escape_next = True
+                    continue
+                if char == '"':
+                    in_string = not in_string
+                    continue
+                
+                # Count brackets/braces only outside strings
+                if not in_string:
+                    if char == start_char:
+                        char_count += 1
+                    elif char == end_char:
+                        char_count -= 1
+                        if char_count == 0:
+                            end_pos = i
+                            break
             
-            # Count braces only outside strings
-            if not in_string:
-                if char == '{':
-                    brace_count += 1
-                elif char == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        brace_end = i
-                        break
-        
-        if brace_end > brace_start:
-            extracted_json = json_str[brace_start:brace_end + 1]
-            print(f"DEBUG: Extracted JSON from position {brace_start} to {brace_end}")
+            if end_pos > start_pos:
+                extracted_json = json_str[start_pos:end_pos + 1]
+                print(f"DEBUG: Extracted {start_char}...{end_char} from position {start_pos} to {end_pos}")
+                return extracted_json
+        except ValueError:
+            return None
+        return None
+    
+    # Try extracting JSON object first
+    extracted = extract_json_structure(json_str, '{', '}')
+    if extracted:
+        try:
+            return json.loads(extracted)
+        except json.JSONDecodeError:
             try:
-                return json.loads(extracted_json)
-            except json.JSONDecodeError:
                 # Try fixing the extracted JSON
-                fixed = correct_json(extracted_json)
+                fixed = correct_json(extracted)
                 return json.loads(fixed)
-    except (ValueError, json.JSONDecodeError) as e:
-        print(f"DEBUG: Manual extraction failed: {e}")
+            except json.JSONDecodeError as e:
+                print(f"DEBUG: Object extraction and fix failed: {e}")
+    
+    # Try extracting JSON array
+    extracted = extract_json_structure(json_str, '[', ']')
+    if extracted:
+        try:
+            return json.loads(extracted)
+        except json.JSONDecodeError:
+            try:
+                # Try fixing the extracted JSON
+                fixed = correct_json(extracted)
+                return json.loads(fixed)
+            except json.JSONDecodeError as e:
+                print(f"DEBUG: Array extraction and fix failed: {e}")
     
     # If all else fails, raise an error with useful debugging info
     preview = json_str[:500] if len(json_str) > 500 else json_str

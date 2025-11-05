@@ -10,4 +10,11 @@ Code:
 ...
 # main function after the helper functions
 def your_main_function_name(conn, vessel):
+    # Use ONLY MechJeb autopilots and modules
+    # Example: mj = conn.mech_jeb
+    # Example: mj.ascent_guidance.enabled = True
+    # Example: mj.landing_autopilot.enabled = True
+    # Example: mj.docking_autopilot.enabled = True
+    # Example: mj.maneuver_planner.operation_transfer.make_nodes()
+    # Example: mj.node_executor.execute_all_nodes()
     # ...

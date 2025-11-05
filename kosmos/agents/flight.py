@@ -57,7 +57,7 @@ class FlightAgent:
 
     def construct_system_message(self, maneuvers=[]):
         print(f"🔍 DEBUG: FlightAgent constructing system message with {len(maneuvers)} maneuvers")
-        system_template = load_prompt("new_flight_template")
+        system_template = load_prompt("flight_template")
         # Load MechJeb documentation
         mechjeb_docs = load_prompt("mechjeb_readmellm")
         # Load kRPC documentation
