@@ -23,6 +23,10 @@ Nearby vessels: Other spacecraft in the vicinity.
 Mission: The objective I need to accomplish.
 Context: The context and requirements of the mission.
 
+Diagnostics:
+- If a maneuver is being executed, flag any of the following: burn_time is None, dv_total is 0, or time_to_node < burn_time/2 at execution start.
+- For transfer phases, flag if next_patch.has_next_patch is False or if next_body is not the intended target. 
+
 You should only respond in VALID JSON format as described below:
 {{
     "reasoning": "your reasoning here",
