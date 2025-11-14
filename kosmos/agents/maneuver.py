@@ -66,14 +66,6 @@ class ManeuverAgent:
             print("Make sure you have the correct LangChain version and API keys set up")
             self.agent = None
         # prevented vector database creation
-        '''
-        assert self.vector_db._collection.count() == len(self.availablemaneuvers), (
-            f"Skill Manager's vectordb is not synced with skills.json.\n"
-            f"There are {self.vector_db._collection.count()} skills in vectordb but {len(self.availablemaneuvers)} skills in skills.json.\n"
-            f"Did you set resume=False when initializing the manager?\n"
-            f"You may need to manually delete the vectordb directory for running from scratch."
-        )
-        '''
 
     @property
     def programs(self):
