@@ -16,44 +16,6 @@ api_key = os.getenv('OPENAI')
 # database to store successful code
 vector_db = []
 
-# Dummy code for KRPC docking automation
-docking_code = '''
-def dock_with_target():
-
-    # This script assumes the vessel is next to the target and the target is a ship.
-    conn = krpc.connect(name="Docking with target")
-    sc = conn.space_center
-    mj = conn.mech_jeb
-    active = sc.active_vessel
-
-    # Set the first docking port as the controlling part
-    print("Setting the first docking port as the controlling part")
-    parts = active.parts
-    parts.controlling = parts.docking_ports[0].part
-
-    # Find a free docking port attached to the target vessel and set it as the target
-    print("Looking for a free docking port attached to the target vessel")
-    for dp in sc.target_vessel.parts.docking_ports:
-        if not dp.docked_part:
-            sc.target_docking_port = dp
-            break
-
-    # Engage Docking Autopilot and close the connection when it finishes
-    print("Starting the docking process")
-    docking = mj.docking_autopilot
-    docking.enabled = True
-
-    with conn.stream(getattr, docking, "enabled") as enabled:
-        enabled.rate = 1  # we don't need a high throughput rate, 1 second is more than enough
-        with enabled.condition:
-            while enabled():
-                enabled.wait()
-
-    print("Docking complete!")
-    conn.close()
-'''
-
-
 class ManeuverAgent:
     def __init__(self, model_name="gpt-4o", temperature=0, top_k_vals=5, timeout_period=120, checkpoint_dir="checkpoint", resume=0):
         print(f"🔍 DEBUG: ManeuverAgent initializing with model={model_name}, top_k={top_k_vals}, resume={resume}")
