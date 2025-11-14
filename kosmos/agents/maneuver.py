@@ -16,6 +16,44 @@ api_key = os.getenv('OPENAI')
 # database to store successful code
 vector_db = []
 
+# Dummy code for KRPC docking automation
+docking_code = '''
+def dock_with_target():
+
+    # This script assumes the vessel is next to the target and the target is a ship.
+    conn = krpc.connect(name="Docking with target")
+    sc = conn.space_center
+    mj = conn.mech_jeb
+    active = sc.active_vessel
+
+    # Set the first docking port as the controlling part
+    print("Setting the first docking port as the controlling part")
+    parts = active.parts
+    parts.controlling = parts.docking_ports[0].part
+
+    # Find a free docking port attached to the target vessel and set it as the target
+    print("Looking for a free docking port attached to the target vessel")
+    for dp in sc.target_vessel.parts.docking_ports:
+        if not dp.docked_part:
+            sc.target_docking_port = dp
+            break
+
+    # Engage Docking Autopilot and close the connection when it finishes
+    print("Starting the docking process")
+    docking = mj.docking_autopilot
+    docking.enabled = True
+
+    with conn.stream(getattr, docking, "enabled") as enabled:
+        enabled.rate = 1  # we don't need a high throughput rate, 1 second is more than enough
+        with enabled.condition:
+            while enabled():
+                enabled.wait()
+
+    print("Docking complete!")
+    conn.close()
+'''
+
+
 class ManeuverAgent:
     def __init__(self, model_name="gpt-4o", temperature=0, top_k_vals=5, timeout_period=120, checkpoint_dir="checkpoint", resume=0):
         print(f"🔍 DEBUG: ManeuverAgent initializing with model={model_name}, top_k={top_k_vals}, resume={resume}")
@@ -66,6 +104,14 @@ class ManeuverAgent:
             print("Make sure you have the correct LangChain version and API keys set up")
             self.agent = None
         # prevented vector database creation
+        '''
+        assert self.vector_db._collection.count() == len(self.availablemaneuvers), (
+            f"Skill Manager's vectordb is not synced with skills.json.\n"
+            f"There are {self.vector_db._collection.count()} skills in vectordb but {len(self.availablemaneuvers)} skills in skills.json.\n"
+            f"Did you set resume=False when initializing the manager?\n"
+            f"You may need to manually delete the vectordb directory for running from scratch."
+        )
+        '''
 
     @property
     def programs(self):
@@ -95,6 +141,10 @@ class ManeuverAgent:
         print(f"🔍 DEBUG: ManeuverAgent maneuver overview created: {maneuver_overview[:200]}...")
 
         # check if code function name is in the available skills list
+        '''if code_function_name in self.availablemaneuvers:
+            #written_function_name = code_function_name
+            #print(f"🔍 DEBUG: ManeuverAgent adding new maneuver '{code_function_name}'")
+        '''
         if code_function_name not in self.availablemaneuvers:
             print(f"🔍 DEBUG: ManeuverAgent adding new maneuver '{code_function_name}'")
             dumped_function_name = code_function_name
@@ -163,20 +213,23 @@ class ManeuverAgent:
             # in .txt
             dump_text(
                 maneuver_overview,
-                f"{self.checkpoint_dir}/skill/description/{written_function_name}.txt"
+                f"{self.checkpoint}/skill/description/{written_function_name}.txt"
             )
 
             # in .py
             dump_text(
                 code_function_body,
-                f"{self.checkpoint_dir}/skill/code/{written_function_name}.py"
+                f"{self.checkpoint}/skill/code/{written_function_name}.py"
             )
 
             dump_json(
                 self.availablemaneuvers,
-                f"{self.checkpoint_dir}/skill/available_maneuvers.json"
+                f"{self.checkpoint}/skill/available_maneuvers.json"
             )
-            # TODO: Implement persistent storage in vector DB for versioning in the future. Track this as a GitHub issue.
+            '''
+            # make it persistent storage in vector db
+            #self.vector_db.persist()
+
     def createDescription(self, code_function_name, code_function_body):
         print(f"🔍 DEBUG: ManeuverAgent creating description for function '{code_function_name}'")
         try:
@@ -198,6 +251,15 @@ class ManeuverAgent:
         result = f"def {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
         print(f"🔍 DEBUG: ManeuverAgent description created, length: {len(result)} chars")
         return result
+        # invoke message to AI agent
+        #agent_response = self.llm.invoke(messages)
+        # for testing
+        #print(agent_response)
+
+        # if there was an actual description 
+        #if agent_response:
+        #    vector_db.append(agent_response)
+
     # retrieve maneuvers from vector db
     def getManeuvers(self, query):
         print(f"🔍 DEBUG: ManeuverAgent retrieving maneuvers for query: '{query[:100]}...'")
@@ -233,3 +295,23 @@ class ManeuverAgent:
         return maneuvers
 
     # TESTING INITIALIZATION
+    '''
+    if __name__ == "__main__":
+        agent = ManeuverAgent()
+        #agent.add_new_maneuver(samp_dict)
+
+        #agent.vector_db.delete_collection()
+        
+        item = agent.vector_db.similarity_search(query = "dock with target vessel using docking ports", k = 3)
+        print(item)
+        print(f"🔍 DEBUG PART 2: ManeuverAgent vector DB has {agent.vector_db._collection.count()} documents, requesting ")
+        agent.vector_db.delete_collection()
+        if agent.vector_db.reset_collection:
+            print("🔍 DEBUG: ManeuverAgent vector DB successfully deleted collection")
+        else:
+            item = agent.vector_db.similarity_search(query = "dock with target vessel using docking ports", k = 3)
+        
+        #maneuvers = agent.getManeuvers("dock with target vessel using docking ports")
+        #print("Retrieved Maneuvers:")    #for maneuver in maneuvers:
+        #    print(maneuver)
+    '''
