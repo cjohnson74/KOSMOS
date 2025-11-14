@@ -176,10 +176,7 @@ class ManeuverAgent:
                 self.availablemaneuvers,
                 f"{self.checkpoint_dir}/skill/available_maneuvers.json"
             )
-            '''
-            # make it persistent storage in vector db
-            #self.vector_db.persist()
-
+            # TODO: Implement persistent storage in vector DB for versioning in the future. Track this as a GitHub issue.
     def createDescription(self, code_function_name, code_function_body):
         print(f"🔍 DEBUG: ManeuverAgent creating description for function '{code_function_name}'")
         try:
