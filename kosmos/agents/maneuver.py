@@ -171,18 +171,18 @@ class ManeuverAgent:
             # in .txt
             dump_text(
                 maneuver_overview,
-                f"{self.checkpoint}/skill/description/{written_function_name}.txt"
+                f"{self.checkpoint_dir}/skill/description/{written_function_name}.txt"
             )
 
             # in .py
             dump_text(
                 code_function_body,
-                f"{self.checkpoint}/skill/code/{written_function_name}.py"
+                f"{self.checkpoint_dir}/skill/code/{written_function_name}.py"
             )
 
             dump_json(
                 self.availablemaneuvers,
-                f"{self.checkpoint}/skill/available_maneuvers.json"
+                f"{self.checkpoint_dir}/skill/available_maneuvers.json"
             )
             '''
             # make it persistent storage in vector db
