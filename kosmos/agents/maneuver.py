@@ -209,15 +209,6 @@ class ManeuverAgent:
         result = f"async function {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
         print(f"🔍 DEBUG: ManeuverAgent description created, length: {len(result)} chars")
         return result
-        # invoke message to AI agent
-        #agent_response = self.llm.invoke(messages)
-        # for testing
-        #print(agent_response)
-
-        # if there was an actual description 
-        #if agent_response:
-        #    vector_db.append(agent_response)
-
     # retrieve maneuvers from vector db
     def getManeuvers(self, query):
         print(f"🔍 DEBUG: ManeuverAgent retrieving maneuvers for query: '{query[:100]}...'")
