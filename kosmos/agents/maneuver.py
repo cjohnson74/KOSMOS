@@ -74,7 +74,7 @@ class ManeuverAgent:
             # self.control_primitives = load_control_primitives()  # Disabled for testing
             self.control_primitives = []  # Empty list for testing without control primitives
             # if resuming from checkpoint
-            if resume:
+            if resume: # make it so that it runs
                 print(f'🔍 DEBUG: ManeuverAgent loading from checkpoint {checkpoint_dir}/skill')
                 self.availablemaneuvers = load_json(f"{checkpoint_dir}/skill/available_maneuvers.json")
                 print(f"🔍 DEBUG: ManeuverAgent loaded {len(self.availablemaneuvers)} maneuvers from checkpoint")
@@ -248,7 +248,7 @@ class ManeuverAgent:
         print(f"🔍 DEBUG: ManeuverAgent LLM response length: {len(llm_response)} chars")
         maneuver_overview = f"    // {llm_response}"
 
-        result = f"async function {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
+        result = f"def {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
         print(f"🔍 DEBUG: ManeuverAgent description created, length: {len(result)} chars")
         return result
         # invoke message to AI agent
