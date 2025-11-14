@@ -103,10 +103,6 @@ class ManeuverAgent:
         print(f"🔍 DEBUG: ManeuverAgent maneuver overview created: {maneuver_overview[:200]}...")
 
         # check if code function name is in the available skills list
-        '''if code_function_name in self.availablemaneuvers:
-            #written_function_name = code_function_name
-            #print(f"🔍 DEBUG: ManeuverAgent adding new maneuver '{code_function_name}'")
-        '''
         if code_function_name not in self.availablemaneuvers:
             print(f"🔍 DEBUG: ManeuverAgent adding new maneuver '{code_function_name}'")
             dumped_function_name = code_function_name
