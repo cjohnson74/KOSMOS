@@ -236,23 +236,3 @@ class ManeuverAgent:
         return maneuvers
 
     # TESTING INITIALIZATION
-    '''
-    if __name__ == "__main__":
-        agent = ManeuverAgent()
-        #agent.add_new_maneuver(samp_dict)
-
-        #agent.vector_db.delete_collection()
-        
-        item = agent.vector_db.similarity_search(query = "dock with target vessel using docking ports", k = 3)
-        print(item)
-        print(f"🔍 DEBUG PART 2: ManeuverAgent vector DB has {agent.vector_db._collection.count()} documents, requesting ")
-        agent.vector_db.delete_collection()
-        if agent.vector_db.reset_collection:
-            print("🔍 DEBUG: ManeuverAgent vector DB successfully deleted collection")
-        else:
-            item = agent.vector_db.similarity_search(query = "dock with target vessel using docking ports", k = 3)
-        
-        #maneuvers = agent.getManeuvers("dock with target vessel using docking ports")
-        #print("Retrieved Maneuvers:")    #for maneuver in maneuvers:
-        #    print(maneuver)
-    '''
