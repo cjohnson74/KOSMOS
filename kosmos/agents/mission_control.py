@@ -15,17 +15,17 @@ from langchain_chroma import Chroma
 
 class MissionControlAgent:
     def __init__(
-            self,
-            model_name="gpt-3.5-turbo",
-            temperature=0,
-            qa_model_name="gpt-3.5-turbo",
-            qa_temperature=0,
-            request_timout=120,
-            ckpt_dir="ckpt",
-            resume=False,
-            mode="auto",
-            warm_up=None,
-            core_resources: str | None = None,
+        self,
+        model_name="gpt-3.5-turbo",
+        temperature=0,
+        qa_model_name="gpt-3.5-turbo",
+        qa_temperature=0,
+        request_timout=120,
+        ckpt_dir="ckpt",
+        resume=False,
+        mode="auto",
+        warm_up=None,
+        core_resources: str | None = None,
     ):
         print(f"🔍 DEBUG: MissionControlAgent initializing with model={model_name}, mode={mode}, resume={resume}")
         self.llm = ChatOpenAI(
@@ -54,14 +54,13 @@ class MissionControlAgent:
             )
             self.failed_missions = U.load_json(f"{ckpt_dir}/mission_control/failed_missions.json")
             self.qa_cache = U.load_json(f"{ckpt_dir}/mission_control/qa_cache.json")
-            print(
-                f"🔍 DEBUG: MissionControlAgent loaded {len(self.completed_missions)} completed, {len(self.failed_missions)} failed missions")
+            print(f"🔍 DEBUG: MissionControlAgent loaded {len(self.completed_missions)} completed, {len(self.failed_missions)} failed missions")
         else:
             self.completed_missions = []
             self.failed_missions = []
             self.qa_cache = {}
             print(f"🔍 DEBUG: MissionControlAgent starting fresh with no previous missions")
-
+        
         # vectordb for qa cache
         self.qa_cache_questions_vectordb = Chroma(
             collection_name="qa_cache_questions_vectordb",
@@ -77,7 +76,7 @@ class MissionControlAgent:
             f"Did you set resume=False when initializing the agent?\n"
             f"You may need to manually delete the qa cache question vectordb directory for running from scratch.\n"
         )
-
+        
         # Initialize warm up parameters
         if not warm_up:
             warm_up = self.default_warmup
@@ -146,7 +145,7 @@ class MissionControlAgent:
         base_prompt = load_prompt("mission_control")
         # Load kRPC documentation to help with understanding vessel capabilities
         mechjeb_docs = load_prompt("mechjeb_readmellm")
-
+        
         # Combine the prompts
         enhanced_prompt = f"""{base_prompt}
 
@@ -173,7 +172,7 @@ When analyzing vessel telemetry data, be aware of the following:
 4. **Mission Appropriateness**: Consider whether the requested mission is appropriate for the vessel's apparent state. Simple control operations (like enabling SAS or setting throttle) should be possible even with limited data.
 
 Use this documentation to better understand vessel capabilities and suggest appropriate missions based on what's actually possible with the kRPC API."""
-
+        
         system_message = SystemMessage(content=enhanced_prompt)
         assert isinstance(system_message, SystemMessage)
         return system_message
@@ -185,40 +184,40 @@ Use this documentation to better understand vessel capabilities and suggest appr
             event_type, event = last_event
         else:
             event_type, event = "observe", last_event
-
+            
         if event_type == "error":
             return f"Error occurred: {event.get('execution_error', 'Unknown error')}"
-
+            
         event = last_event[1] if isinstance(last_event, tuple) and len(last_event) > 1 else last_event
-
+        
         # Extract comprehensive telemetry if available
         comprehensive = event.get("comprehensive_telemetry", {})
-
+        
         current_body = event.get("current_body", "Unknown")
         mission_time = event.get("mission_time", 0)
         vessel_situation = event.get("vessel_situation", "Unknown")
-
+        
         # Position and velocity - use comprehensive data if available
         position = event.get("position", {"x": 0, "y": 0, "z": 0})
         velocity = event.get("velocity", {"x": 0, "y": 0, "z": 0})
-
+        
         altitude = event.get("altitude", 0)
         if comprehensive.get('altitude_location', {}).get('mean_altitude') is not None:
             altitude = comprehensive['altitude_location']['mean_altitude']
-
+        
         speed = event.get("speed", 0)
         if comprehensive.get('position_velocity', {}).get('speed') is not None:
             speed = comprehensive['position_velocity']['speed']
-
+        
         # Orbital parameters - use comprehensive data if available
         orbit_params = event.get("orbit_parameters", {})
         comp_orbital = comprehensive.get('orbital', {})
-
+        
         apoapsis = orbit_params.get("apoapsis_altitude", comp_orbital.get("apoapsis_altitude", 0))
         periapsis = orbit_params.get("periapsis_altitude", comp_orbital.get("periapsis_altitude", 0))
         inclination = orbit_params.get("inclination", comp_orbital.get("inclination", 0))
         eccentricity = orbit_params.get("eccentricity", comp_orbital.get("eccentricity", 0))
-
+        
         # Resources - merge with comprehensive data
         resources = event.get("resources", {})
         comp_resources = comprehensive.get('resources', {})
@@ -226,22 +225,22 @@ Use this documentation to better understand vessel capabilities and suggest appr
         for name, data in comp_resources.items():
             if name not in all_resources:
                 all_resources[name] = {'amount': data.get('amount', 0), 'max': data.get('max', 0)}
-
+        
         vessel_status = event.get("vessel_status", {})
         part_status = event.get("part_status", {})
         nearby_vessels = event.get("nearby_vessels", [])
-
+        
         # Calculate fuel levels - use merged resources
         liquid_fuel = all_resources.get("LiquidFuel", {}).get("amount", 0)
         oxidizer = all_resources.get("Oxidizer", {}).get("amount", 0)
         monoprop = all_resources.get("MonoPropellant", {}).get("amount", 0)
         electric_charge = all_resources.get("ElectricCharge", {}).get("amount", 0)
-
+        
         completed_missions = (
             ", ".join(self.completed_missions) if self.completed_missions else "None"
         )
         failed_missions = ", ".join(self.failed_missions) if self.failed_missions else "None"
-
+        
         # Filter resources for warm-up phase
         if self.progress < self.warm_up["optional_resources"]:
             filtered_resources = {}
@@ -253,7 +252,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
             resources = all_resources
 
         nearby_vessels_str = (
-            ", ".join([vessel["name"] for vessel in nearby_vessels[:5]])
+            ", ".join([vessel["name"] for vessel in nearby_vessels[:5]]) 
             if nearby_vessels else "None"
         )
 
@@ -280,7 +279,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
         observation = self.render_observation(
             telemetry=telemetry, vessel_observation=vessel_observation
         )
-
+        
         if self.progress >= self.warm_up["context"]:
             questions, answers = self.run_qa(
                 telemetry=telemetry, vessel_observation=vessel_observation
@@ -316,7 +315,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
         print(f"\033[33mDebug - Mission Control Progress: {self.progress}\033[0m")
         print(f"\033[33mDebug - Completed missions: {self.completed_missions}\033[0m")
         print(f"\033[33mDebug - Failed missions: {self.failed_missions}\033[0m")
-
+        
         # Use initial mission if provided (regardless of progress)
         if self.mode == "auto" and initial_mission:
             mission = initial_mission
@@ -335,14 +334,14 @@ Use this documentation to better understand vessel capabilities and suggest appr
             resources = event.get("resources", {})
             liquid_fuel = resources.get("LiquidFuel", {}).get("amount", 0)
             electric_charge = resources.get("ElectricCharge", {}).get("amount", 0)
-
+            
             # Low fuel warning missions
             if liquid_fuel < 100:
                 mission = "Perform emergency landing"
                 context = f"Liquid fuel is critically low ({liquid_fuel:.1f} units). Execute immediate landing procedures to save the crew and mission data."
                 return mission, context
-
-            # Low battery missions
+            
+            # Low battery missions    
             if electric_charge < 50:
                 mission = "Deploy solar panels and recharge"
                 context = f"Electric charge is low ({electric_charge:.1f} units). Deploy solar panels or use alternate power generation to recharge batteries."
@@ -351,7 +350,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
         messages = [
             self.render_system_message(),
             self.render_human_message(
-                telemetry=telemetry,
+                telemetry=telemetry, 
                 vessel_observation=vessel_observation
             ),
         ]
@@ -369,21 +368,21 @@ Use this documentation to better understand vessel capabilities and suggest appr
         print(f"🔍 DEBUG: MissionControlAgent proposing AI mission (retries left: {max_retries})")
         if max_retries == 0:
             raise RuntimeError("Max retries reached, failed to propose AI mission.")
-
+        
         print(f"🔍 DEBUG: MissionControlAgent calling LLM with {len(messages)} messages")
         curriculum = self.llm.invoke(messages).content
         print(f"\033[31m****Mission Control Agent AI message****\n{curriculum}\033[0m")
-
+        
         try:
             print(f"🔍 DEBUG: MissionControlAgent parsing AI response")
             response = self.parse_ai_message(curriculum)
             assert "next_mission" in response
             print(f"🔍 DEBUG: MissionControlAgent parsed mission: {response['next_mission']}")
-
+            
             print(f"🔍 DEBUG: MissionControlAgent getting mission context")
             context = self.get_mission_context(response["next_mission"])
             print(f"🔍 DEBUG: MissionControlAgent context length: {len(context)} chars")
-
+            
             return response["next_mission"], context
         except Exception as e:
             print(
@@ -398,7 +397,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
         print(f"🔍 DEBUG: MissionControlAgent parsing message with {len(message)} chars")
         mission = ""
         lines = message.split("\n")
-
+        
         # Always try to extract the full mission content after "Mission:"
         mission_started = False
         mission_lines = []
@@ -416,9 +415,9 @@ Use this documentation to better understand vessel capabilities and suggest appr
             elif mission_started and line.startswith("Reasoning:"):
                 # Hit next section, stop collecting
                 break
-
+        
         mission = "\n".join(mission_lines).strip()
-
+        
         # If no mission was found with the above method, fall back to simple extraction
         if not mission:
             for line in lines:
@@ -426,7 +425,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
                     mission = line[8:].replace(".", "").strip()
                     print(f"🔍 DEBUG: MissionControlAgent found mission line: {line}")
                     break
-
+        
         assert mission, "Mission not found in Mission Control Agent response"
         print(f"🔍 DEBUG: MissionControlAgent extracted mission: '{mission[:100]}...'")
         return {"next_mission": mission}
@@ -444,15 +443,14 @@ Use this documentation to better understand vessel capabilities and suggest appr
     def update_exploration_progress(self, info):
         mission = info["mission"]
         success = info["success"]
-
-        print(
-            f"\033[35m📊 Mission Control: Updating progress for mission: {mission[:50]}... (Success: {success})\033[0m")
-
+        
+        print(f"\033[35m📊 Mission Control: Updating progress for mission: {mission[:50]}... (Success: {success})\033[0m")
+        
         # Skip recording certain utility missions
         if mission.startswith("Deploy solar panels") or mission.startswith("Perform emergency"):
             print(f"\033[35m📊 Mission Control: Skipping utility mission\033[0m")
             return
-
+            
         if success:
             print(f"\033[35mCompleted mission: {mission}.\033[0m")
             self.completed_missions.append(mission)
@@ -461,9 +459,8 @@ Use this documentation to better understand vessel capabilities and suggest appr
                 f"\033[35mFailed to complete mission: {mission}. Adding to failed missions.\033[0m"
             )
             self.failed_missions.append(mission)
-
-        print(
-            f"\033[35m📊 Mission Control: Progress before cleanup: {len(self.completed_missions)} completed, {len(self.failed_missions)} failed\033[0m")
+        
+        print(f"\033[35m📊 Mission Control: Progress before cleanup: {len(self.completed_missions)} completed, {len(self.failed_missions)} failed\033[0m")
 
         # Clean up missions and save to disk
         self.clean_up_missions()
@@ -471,7 +468,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
     def clean_up_missions(self):
         updated_completed_missions = []
         updated_failed_missions = self.failed_missions
-
+        
         # Dedup completed missions but keep order
         for mission in self.completed_missions:
             if mission not in updated_completed_missions:
@@ -546,7 +543,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
         )
         print(f"🔍 DEBUG: MissionControlAgent getting context for mission: '{mission}'")
         print(f"🔍 DEBUG: MissionControlAgent generated question: '{question}'")
-
+        
         if question in self.qa_cache:
             print(f"🔍 DEBUG: MissionControlAgent found cached answer for question")
             answer = self.qa_cache[question]
@@ -560,7 +557,7 @@ Use this documentation to better understand vessel capabilities and suggest appr
             U.dump_json(self.qa_cache, f"{self.ckpt_dir}/mission_control/qa_cache.json")
             self.qa_cache_questions_vectordb.persist()
             print(f"🔍 DEBUG: MissionControlAgent cached new answer")
-
+        
         context = f"Question: {question}\n{answer}"
         print(f"🔍 DEBUG: MissionControlAgent context length: {len(context)} chars")
         return context
@@ -580,14 +577,14 @@ Use this documentation to better understand vessel capabilities and suggest appr
     def run_qa_step1_ask_questions(self, *, telemetry, vessel_observation):
         event = telemetry[-1][1]
         current_body = event.get("current_body", "Unknown").replace("_", " ")
-
+        
         questions = [
             f"What can I do when orbiting {current_body} in Kerbal Space Program?",
             f"What are the characteristics of {current_body} in Kerbal Space Program?",
             f"What missions are possible from {current_body} in Kerbal Space Program?",
         ]
         concepts = [current_body, current_body, current_body]
-
+        
         messages = [
             self.render_system_message_qa_step1_ask_questions(),
             self.render_human_message_qa_step1_ask_questions(
