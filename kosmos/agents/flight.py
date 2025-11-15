@@ -8,6 +8,7 @@ import kosmos.utils as U
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import SystemMessagePromptTemplate
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langsmith import traceable
 
 from kosmos.prompts import load_prompt
 
@@ -353,6 +354,7 @@ class FlightAgent:
         print(f"🔍 DEBUG: FlightAgent human message constructed, length={len(observation)} chars")
         return HumanMessage(content=observation)
 
+    @traceable(name="flight_agent")
     def call_llm(self, messages):
         print(f"🔍 DEBUG: FlightAgent calling LLM with {len(messages)} messages")
         print(f"🔍 DEBUG: FlightAgent system message preview: {messages[0].content[:200]}...")
