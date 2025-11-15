@@ -87,10 +87,10 @@ class MissionControlAgent:
             self.warm_up["optional_resources"] = warm_up["optional_resources"]
         else:
             self.warm_up["optional_resources"] = 0
-            
+
         for key in self.mission_observations:
             self.warm_up[key] = warm_up.get(key, self.default_warmup[key])
-        
+
         # Set mission-specific warm up values
         self.warm_up["vessel_status"] = 0
         self.warm_up["resources"] = 0

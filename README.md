@@ -18,6 +18,30 @@ curl -sSL https://install.python-poetry.org | python3 -
 brew install poetry
 ```
 
+### 1. Install Poetry (Windows)
+1. Open PowerShell with administrative privileges by right-clicking on PowerShell and select "Run as administrator"
+
+2. Copy and paste the commands below
+```bash
+   # To set execution policy
+	Set-ExecutionPolicy RemoteSigned -scope CurrentUser
+	# To download Scoop and by running the installer script for Scoop w/ elevated privileges
+   Invoke-Expression “& {$(Invoke-RestMethod get.scoop.sh)} -RunAsAdmin”
+```
+
+**NOTE: Make sure to close out terminal to reflect changes**
+ 
+3. Run below command to confirm Scoop installment by listing available commands on Scoop
+```bash
+    scoop -h
+```
+
+4. Install pipx via Scoop
+```bash
+   scoop install pipx
+	pipx ensurepath
+```
+
 ### 2. Install KSP Mods
 Install the **kRPC mod** for Kerbal Space Program:
 - Download and install **CKAN** (KSP mod manager): https://krpc.github.io/krpc/getting-started.html

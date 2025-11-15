@@ -52,6 +52,8 @@ def dock_with_target():
     print("Docking complete!")
     conn.close()
 '''
+
+
 class ManeuverAgent:
     def __init__(self, model_name="gpt-4o", temperature=0, top_k_vals=5, timeout_period=120, checkpoint_dir="checkpoint", resume=0):
         print(f"🔍 DEBUG: ManeuverAgent initializing with model={model_name}, top_k={top_k_vals}, resume={resume}")
@@ -72,7 +74,7 @@ class ManeuverAgent:
             # self.control_primitives = load_control_primitives()  # Disabled for testing
             self.control_primitives = []  # Empty list for testing without control primitives
             # if resuming from checkpoint
-            if resume:
+            if resume: # make it so that it runs
                 print(f'🔍 DEBUG: ManeuverAgent loading from checkpoint {checkpoint_dir}/skill')
                 self.availablemaneuvers = load_json(f"{checkpoint_dir}/skill/available_maneuvers.json")
                 print(f"🔍 DEBUG: ManeuverAgent loaded {len(self.availablemaneuvers)} maneuvers from checkpoint")
@@ -101,13 +103,15 @@ class ManeuverAgent:
             print(f"🔍 ERROR: ManeuverAgent error initializing: {e}")
             print("Make sure you have the correct LangChain version and API keys set up")
             self.agent = None
-
+        # prevented vector database creation
+        '''
         assert self.vector_db._collection.count() == len(self.availablemaneuvers), (
             f"Skill Manager's vectordb is not synced with skills.json.\n"
             f"There are {self.vector_db._collection.count()} skills in vectordb but {len(self.availablemaneuvers)} skills in skills.json.\n"
             f"Did you set resume=False when initializing the manager?\n"
             f"You may need to manually delete the vectordb directory for running from scratch."
         )
+        '''
 
     @property
     def programs(self):
@@ -136,11 +140,50 @@ class ManeuverAgent:
         # test if reached here
         print(f"🔍 DEBUG: ManeuverAgent maneuver overview created: {maneuver_overview[:200]}...")
 
-        # check if code function name is not in the available skills list
+        # check if code function name is in the available skills list
+        '''if code_function_name in self.availablemaneuvers:
+            #written_function_name = code_function_name
+            #print(f"🔍 DEBUG: ManeuverAgent adding new maneuver '{code_function_name}'")
+        '''
         if code_function_name not in self.availablemaneuvers:
-            written_function_name = code_function_name
             print(f"🔍 DEBUG: ManeuverAgent adding new maneuver '{code_function_name}'")
-        else:
+            dumped_function_name = code_function_name
+            try:
+                self.vector_db.add_texts(
+                texts=[maneuver_overview],
+                ids=[code_function_name],
+                metadatas=[{"name": code_function_name}]
+            )
+            except Exception as e:
+                print(f"🔍 ERROR: ManeuverAgent error adding text to vector DB: {e}")
+                return
+
+            # appending a new maneuver to dictionary of maneuvers
+            self.availablemaneuvers[code_function_name] = {
+                "code" : code_function_body,
+                "description" : maneuver_overview
+            }
+            print(f"🔍 DEBUG: ManeuverAgent maneuver '{code_function_name}' added to available maneuvers\n {self.availablemaneuvers[code_function_name]}")
+
+            # dump code and text for newly added maneuvers
+
+            # in .txt
+            dump_text(
+                maneuver_overview,
+                f"{self.checkpoint_dir}/skill/description/{dumped_function_name}.txt"
+            )
+
+            # in .py
+            dump_text(
+                code_function_body,
+                f"{self.checkpoint_dir}/skill/code/{dumped_function_name}.py"
+            )
+
+            dump_json(
+                self.availablemaneuvers,
+                f"{self.checkpoint_dir}/skill/available_maneuvers.json"
+            )
+            '''
             print(f"🔍 DEBUG: ManeuverAgent maneuver '{code_function_name}' already exists, creating new version")
             # delete the instance from vector db
             self.vector_db.delete(ids=[code_function_name])
@@ -183,25 +226,29 @@ class ManeuverAgent:
                 self.availablemaneuvers,
                 f"{self.checkpoint}/skill/available_maneuvers.json"
             )
-
+            '''
             # make it persistent storage in vector db
-            self.vector_db.persist()
+            #self.vector_db.persist()
 
     def createDescription(self, code_function_name, code_function_body):
         print(f"🔍 DEBUG: ManeuverAgent creating description for function '{code_function_name}'")
-        messages = [
-            SystemMessage(content=load_prompt("maneuver")),
-            HumanMessage(
-                content=code_function_body + "\n\n" + f"The main function is '{code_function_name}'."
-            )
-        ]
+        try:
+            messages = [
+                SystemMessage(content=load_prompt("maneuver")),
+                HumanMessage(
+                    content=code_function_body + "\n\n" + f"The main function is '{code_function_name}'."
+                )
+            ]
+        except Exception as e:
+            print(f"🔍 ERROR: ManeuverAgent error loading prompt or creating messages: {e}")
+            return ""
         print(f"🔍 DEBUG: ManeuverAgent calling LLM to generate description")
         # overview of maneuver
         llm_response = self.llm.invoke(messages).content
         print(f"🔍 DEBUG: ManeuverAgent LLM response length: {len(llm_response)} chars")
         maneuver_overview = f"    // {llm_response}"
 
-        result = f"async function {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
+        result = f"def {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
         print(f"🔍 DEBUG: ManeuverAgent description created, length: {len(result)} chars")
         return result
         # invoke message to AI agent
@@ -233,7 +280,7 @@ class ManeuverAgent:
             "Documents retrieved:", f"{', '.join([doc.metadata['name'] for doc, score in documents_and_scores])}"
         )
 
-        maneuvers = {}
+        maneuvers = []
 
         # iterate through the list of docs_and_scores as {keys: values}
         for doc, score in documents_and_scores:
@@ -246,3 +293,25 @@ class ManeuverAgent:
 
         print(f"🔍 DEBUG: ManeuverAgent returning {len(maneuvers)} maneuvers")
         return maneuvers
+
+    # TESTING INITIALIZATION
+    '''
+    if __name__ == "__main__":
+        agent = ManeuverAgent()
+        #agent.add_new_maneuver(samp_dict)
+
+        #agent.vector_db.delete_collection()
+        
+        item = agent.vector_db.similarity_search(query = "dock with target vessel using docking ports", k = 3)
+        print(item)
+        print(f"🔍 DEBUG PART 2: ManeuverAgent vector DB has {agent.vector_db._collection.count()} documents, requesting ")
+        agent.vector_db.delete_collection()
+        if agent.vector_db.reset_collection:
+            print("🔍 DEBUG: ManeuverAgent vector DB successfully deleted collection")
+        else:
+            item = agent.vector_db.similarity_search(query = "dock with target vessel using docking ports", k = 3)
+        
+        #maneuvers = agent.getManeuvers("dock with target vessel using docking ports")
+        #print("Retrieved Maneuvers:")    #for maneuver in maneuvers:
+        #    print(maneuver)
+    '''
