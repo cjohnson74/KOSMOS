@@ -21,6 +21,7 @@ class FlightAgent:
         checkpoint_dir="checkpoint",
         chat_log=True,
         execution_error=True,
+        max_tokens=8192,  # Increased default to allow longer code responses
     ):
         self.checkpoint_dir = checkpoint_dir
         self.chat_log = chat_log
@@ -30,9 +31,24 @@ class FlightAgent:
             model=model_name,
             temperature=temperature,
             timeout=request_timeout,
+            max_tokens=max_tokens,  # Primary way to set max output tokens
             api_key=os.getenv("ANTHROPIC"),
         )
-        print(f"🔍 DEBUG: FlightAgent initialized with model={model_name}, temp={temperature}, timeout={request_timeout}")
+        
+        # Verify the max_tokens was set correctly
+        if hasattr(self.llm, 'max_tokens'):
+            actual_max = self.llm.max_tokens
+            print(f"🔍 DEBUG: FlightAgent LLM max_tokens attribute: {actual_max}")
+            if actual_max != max_tokens:
+                print(f"🔍 WARNING: Requested max_tokens={max_tokens} but got {actual_max}")
+        elif hasattr(self.llm, 'model_kwargs') and self.llm.model_kwargs:
+            print(f"🔍 DEBUG: FlightAgent LLM model_kwargs: {self.llm.model_kwargs}")
+        elif hasattr(self.llm, 'default_params'):
+            print(f"🔍 DEBUG: FlightAgent LLM default_params: {getattr(self.llm, 'default_params', {})}")
+        
+        # Store max_tokens for potential use in invoke
+        self.max_tokens = max_tokens
+        print(f"🔍 DEBUG: FlightAgent initialized with model={model_name}, temp={temperature}, timeout={request_timeout}, max_tokens={max_tokens}")
 
     def get_vessel_telemetry(self, env=None):
         """Render vessel observation using actual KSP telemetry"""
@@ -359,6 +375,12 @@ class FlightAgent:
         print(f"🔍 DEBUG: FlightAgent calling LLM with {len(messages)} messages")
         print(f"🔍 DEBUG: FlightAgent system message preview: {messages[0].content[:200]}...")
         print(f"🔍 DEBUG: FlightAgent human message preview: {messages[1].content[:200]}...")
+        
+        # Check current max_tokens setting
+        if hasattr(self.llm, 'max_tokens'):
+            print(f"🔍 DEBUG: FlightAgent LLM max_tokens setting: {self.llm.max_tokens}")
+        elif hasattr(self.llm, 'client') and hasattr(self.llm.client, 'max_tokens'):
+            print(f"🔍 DEBUG: FlightAgent LLM client max_tokens: {self.llm.client.max_tokens}")
         
         try:
             response = self.llm.invoke(messages)
