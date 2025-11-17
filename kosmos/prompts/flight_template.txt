@@ -69,9 +69,9 @@ python    def launch_mission(conn, vessel):
 
 16) Always check `conn.space_center.active_vessel` to ensure you're controlling the correct vessel. Vessel references can change during scene transitions.
 
-17) ALWAYS check vessel readiness before using autopilots: verify vessel has engines, fuel, and is in the correct situation.
+17) ALWAYS check vessel readiness before using autopilots: fuel, and is in the correct situation.
 
-18) CRITICAL FOR LAUNCHES: Always enable autostaging and set up staging controller for automatic launch.
+18) CRITICAL FOR LAUNCHES: Always enable autostaging and set up staging controller for automatic launch. Do not forget to set the throttle.
 
 19) CRITICAL: Monitor mission status and detect failures.
 
