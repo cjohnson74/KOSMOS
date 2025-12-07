@@ -131,7 +131,27 @@ class ManeuverAgent:
                 f"{self.checkpoint_dir}/skill/available_maneuvers.json"
             )
 
+    def createDescription(self, code_function_name, code_function_body):
+        print(f"🔍 DEBUG: ManeuverAgent creating description for function '{code_function_name}'")
+        try:
+            messages = [
+                SystemMessage(content=load_prompt("maneuver")),
+                HumanMessage(
+                    content=code_function_body + "\n\n" + f"The main function is '{code_function_name}'."
+                )
+            ]
+        except Exception as e:
+            print(f"🔍 ERROR: ManeuverAgent error loading prompt or creating messages: {e}")
+            return ""
+        print(f"🔍 DEBUG: ManeuverAgent calling LLM to generate description")
+        # overview of maneuver
+        llm_response = self.llm.invoke(messages).content
+        print(f"🔍 DEBUG: ManeuverAgent LLM response length: {len(llm_response)} chars")
+        maneuver_overview = f"    // {llm_response}"
 
+        result = f"def {code_function_name}(bot) {{\n{maneuver_overview}\n}}"
+        print(f"🔍 DEBUG: ManeuverAgent description created, length: {len(result)} chars")
+        return result
      
 
     # retrieve maneuvers from vector db
