@@ -15,6 +15,7 @@ dependencies = [
     "anthropic (>=0.64.0,<0.65.0)",
     "langchain (>=0.3.27,<0.4.0)",
     "langchain-openai (>=0.3.33,<0.4.0)",
+    "langchain-anthropic (>=0.2.0,<0.3.0)",
     "gymnasium (>=1.2.1,<2.0.0)",
     "langchain-chroma (>=0.2.6,<0.3.0)"
 ]
