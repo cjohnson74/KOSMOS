@@ -61,7 +61,6 @@ class MissionControlAgent:
             self.qa_cache = {}
             print(f"🔍 DEBUG: MissionControlAgent starting fresh with no previous missions")
         
-        # vectordb for qa cache
         self.qa_cache_questions_vectordb = Chroma(
             collection_name="qa_cache_questions_vectordb",
             embedding_function=OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI")),
@@ -77,7 +76,6 @@ class MissionControlAgent:
             f"You may need to manually delete the qa cache question vectordb directory for running from scratch.\n"
         )
         
-        # Initialize warm up parameters
         if not warm_up:
             warm_up = self.default_warmup
         self.warm_up = {}
@@ -91,7 +89,6 @@ class MissionControlAgent:
         for key in self.mission_observations:
             self.warm_up[key] = warm_up.get(key, self.default_warmup[key])
 
-        # Set mission-specific warm up values
         self.warm_up["vessel_status"] = 0
         self.warm_up["resources"] = 0
         self.warm_up["completed_missions"] = 0
@@ -141,44 +138,17 @@ class MissionControlAgent:
         return len(self.completed_missions)
 
     def render_system_message(self):
-        # Load the base mission control prompt
         base_prompt = load_prompt("mission_control")
-        # Load kRPC documentation to help with understanding vessel capabilities
         mechjeb_docs = load_prompt("mechjeb_readmellm")
         
-        # Combine the prompts
         enhanced_prompt = f"""{base_prompt}
+        {mechjeb_docs}"""
 
-## kRPC MechJeb API Documentation
-
-The following kRPC MechJebAPI documentation will help you understand what operations are possible with vessels and their capabilities:
-
-{mechjeb_docs}
-
-## Data Validation Guidelines
-
-When analyzing vessel telemetry data, be aware of the following:
-
-1. **Impossible States**: If you see contradictory data (e.g., vessel in orbit but with 0 velocity, or 0 parts but still functioning), this indicates data corruption or errors.
-
-2. **Vessel Capabilities**: Use the kRPC MechJeb documentation above to understand what operations are actually possible. For example:
-   - A vessel needs parts to function
-   - SAS requires electricity and control systems
-   - Throttle control requires engines
-   - Basic operations like "Enable SAS and set throttle" are always possible if the vessel has the required parts
-
-3. **Error Handling**: If telemetry data appears corrupted or impossible, suggest missions that are simple and safe rather than complex operations.
-
-4. **Mission Appropriateness**: Consider whether the requested mission is appropriate for the vessel's apparent state. Simple control operations (like enabling SAS or setting throttle) should be possible even with limited data.
-
-Use this documentation to better understand vessel capabilities and suggest appropriate missions based on what's actually possible with the kRPC API."""
-        
         system_message = SystemMessage(content=enhanced_prompt)
         assert isinstance(system_message, SystemMessage)
         return system_message
 
     def render_observation(self, *, telemetry, vessel_observation):
-        # Handle both observe and error events
         last_event = telemetry[-1]
         if isinstance(last_event, tuple) and len(last_event) > 1:
             event_type, event = last_event
@@ -190,14 +160,12 @@ Use this documentation to better understand vessel capabilities and suggest appr
             
         event = last_event[1] if isinstance(last_event, tuple) and len(last_event) > 1 else last_event
         
-        # Extract comprehensive telemetry if available
         comprehensive = event.get("comprehensive_telemetry", {})
         
         current_body = event.get("current_body", "Unknown")
         mission_time = event.get("mission_time", 0)
         vessel_situation = event.get("vessel_situation", "Unknown")
         
-        # Position and velocity - use comprehensive data if available
         position = event.get("position", {"x": 0, "y": 0, "z": 0})
         velocity = event.get("velocity", {"x": 0, "y": 0, "z": 0})
         
@@ -209,7 +177,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         if comprehensive.get('position_velocity', {}).get('speed') is not None:
             speed = comprehensive['position_velocity']['speed']
         
-        # Orbital parameters - use comprehensive data if available
         orbit_params = event.get("orbit_parameters", {})
         comp_orbital = comprehensive.get('orbital', {})
         
@@ -218,7 +185,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         inclination = orbit_params.get("inclination", comp_orbital.get("inclination", 0))
         eccentricity = orbit_params.get("eccentricity", comp_orbital.get("eccentricity", 0))
         
-        # Resources - merge with comprehensive data
         resources = event.get("resources", {})
         comp_resources = comprehensive.get('resources', {})
         all_resources = {**resources}
@@ -230,7 +196,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         part_status = event.get("part_status", {})
         nearby_vessels = event.get("nearby_vessels", [])
         
-        # Calculate fuel levels - use merged resources
         liquid_fuel = all_resources.get("LiquidFuel", {}).get("amount", 0)
         oxidizer = all_resources.get("Oxidizer", {}).get("amount", 0)
         monoprop = all_resources.get("MonoPropellant", {}).get("amount", 0)
@@ -241,7 +206,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         )
         failed_missions = ", ".join(self.failed_missions) if self.failed_missions else "None"
         
-        # Filter resources for warm-up phase
         if self.progress < self.warm_up["optional_resources"]:
             filtered_resources = {}
             for resource_name, resource_data in all_resources.items():
@@ -294,7 +258,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
                 if i > 5:
                     break
 
-        # Only process observation as dict if it's not a string (error case)
         if isinstance(observation, dict):
             for key in self.mission_observations:
                 if self.progress >= self.warm_up[key]:
@@ -305,7 +268,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
                     if should_include:
                         content += observation[key]
         else:
-            # If observation is a string (error case), just add it
             content += str(observation)
 
         print(f"\033[35m****Mission Control Agent human message****\n{content}\033[0m")
@@ -316,15 +278,12 @@ Use this documentation to better understand vessel capabilities and suggest appr
         print(f"\033[33mDebug - Completed missions: {self.completed_missions}\033[0m")
         print(f"\033[33mDebug - Failed missions: {self.failed_missions}\033[0m")
         
-        # Use initial mission if provided (regardless of progress)
         if self.mode == "auto" and initial_mission:
             mission = initial_mission
-            # Always preserve the full initial mission as provided
             context = f"Initial mission provided. Follow these instructions exactly as given."
             print(f"\033[33mDebug - Using initial mission: {mission[:100]}...\033[0m")
             return mission, context
 
-        # Handle resource constraints
         if telemetry and len(telemetry) > 0:
             last_event = telemetry[-1]
             if isinstance(last_event, tuple) and len(last_event) > 1:
@@ -335,13 +294,11 @@ Use this documentation to better understand vessel capabilities and suggest appr
             liquid_fuel = resources.get("LiquidFuel", {}).get("amount", 0)
             electric_charge = resources.get("ElectricCharge", {}).get("amount", 0)
             
-            # Low fuel warning missions
             if liquid_fuel < 100:
                 mission = "Perform emergency landing"
                 context = f"Liquid fuel is critically low ({liquid_fuel:.1f} units). Execute immediate landing procedures to save the crew and mission data."
                 return mission, context
             
-            # Low battery missions    
             if electric_charge < 50:
                 mission = "Deploy solar panels and recharge"
                 context = f"Electric charge is low ({electric_charge:.1f} units). Deploy solar panels or use alternate power generation to recharge batteries."
@@ -398,7 +355,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         mission = ""
         lines = message.split("\n")
         
-        # Always try to extract the full mission content after "Mission:"
         mission_started = False
         mission_lines = []
         for line in lines:
@@ -410,15 +366,12 @@ Use this documentation to better understand vessel capabilities and suggest appr
             elif mission_started and line.strip():
                 mission_lines.append(line.strip())
             elif mission_started and not line.strip():
-                # Empty line, continue collecting
                 continue
             elif mission_started and line.startswith("Reasoning:"):
-                # Hit next section, stop collecting
                 break
         
         mission = "\n".join(mission_lines).strip()
         
-        # If no mission was found with the above method, fall back to simple extraction
         if not mission:
             for line in lines:
                 if line.startswith("Mission:"):
@@ -446,7 +399,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         
         print(f"\033[35m📊 Mission Control: Updating progress for mission: {mission[:50]}... (Success: {success})\033[0m")
         
-        # Skip recording certain utility missions
         if mission.startswith("Deploy solar panels") or mission.startswith("Perform emergency"):
             print(f"\033[35m📊 Mission Control: Skipping utility mission\033[0m")
             return
@@ -462,19 +414,16 @@ Use this documentation to better understand vessel capabilities and suggest appr
         
         print(f"\033[35m📊 Mission Control: Progress before cleanup: {len(self.completed_missions)} completed, {len(self.failed_missions)} failed\033[0m")
 
-        # Clean up missions and save to disk
         self.clean_up_missions()
 
     def clean_up_missions(self):
         updated_completed_missions = []
         updated_failed_missions = self.failed_missions
         
-        # Dedup completed missions but keep order
         for mission in self.completed_missions:
             if mission not in updated_completed_missions:
                 updated_completed_missions.append(mission)
 
-        # Remove completed missions from failed missions
         for mission in updated_completed_missions:
             while mission in updated_failed_missions:
                 updated_failed_missions.remove(mission)
@@ -482,7 +431,6 @@ Use this documentation to better understand vessel capabilities and suggest appr
         self.completed_missions = updated_completed_missions
         self.failed_missions = updated_failed_missions
 
-        # Save to JSON
         U.dump_json(
             self.completed_missions, f"{self.ckpt_dir}/mission_control/completed_missions.json"
         )
@@ -593,11 +541,8 @@ Use this documentation to better understand vessel capabilities and suggest appr
         ]
         qa_response = self.qa_llm(messages).content
         try:
-            # Regex pattern to extract question and concept pairs
             pattern = r"Question \d+: (.+)\nConcept \d+: (.+)"
-            # Extract all question and concept pairs
             pairs = re.findall(pattern, qa_response)
-            # Store each question and concept in separate lists
             questions_new = [pair[0] for pair in pairs]
             concepts_new = [pair[1] for pair in pairs]
             assert len(questions_new) == len(concepts_new)
@@ -628,44 +573,3 @@ Use this documentation to better understand vessel capabilities and suggest appr
         qa_answer = self.qa_llm(messages).content
         print(f"\033[31mMission Control Agent {qa_answer}\033[0m")
         return qa_answer
-
-    # def update_exploration_progress(self, info):
-    #     mission = info["mission"]
-    #     if mission.startswith("Deposit useless items into the chest at"):
-    #         # No need to record the deposit mission
-    #         return
-    #     if info["success"]:
-    #         print(f"\033[35mCompleted mission {mission}.\033[0m")
-    #         self.completed_missions.append(mission)
-    #     else:
-    #         print(
-    #             f"\033[35mFailed to complete mission {mission}. Skipping to next mission.\033[0m"
-    #         )
-    #         self.failed_missions.append(mission)
-
-    #     # clean up missions and dump to disk
-    #     self.clean_up_missions()
-
-    # def clean_up_missions(self):
-    #     updated_completed_missions = []
-    #     # record repeated failed missions
-    #     updated_failed_missions = self.failed_missions
-    #     # dedup but keep order
-    #     for mission in self.completed_missions:
-    #         if mission not in updated_completed_missions:
-    #             updated_completed_missions.append(mission)
-
-    #     # remove completed missions from failed missions
-    #     for mission in updated_completed_missions:
-    #         while mission in updated_failed_missions:
-    #             updated_failed_missions.remove(mission)
-
-    #     self.completed_missions = updated_completed_missions
-    #     self.failed_missions = updated_failed_missions
-
-    #     # dump to json
-    #     from kosmos.utils import dump_json
-    #     dump_json(
-    #         self.completed_missions, f"{self.ckpt_dir}/mission_control/completed_missions.json"
-    #     )
-    #     dump_json(self.failed_missions, f"{self.ckpt_dir}/mission_control/failed_missions.json")
